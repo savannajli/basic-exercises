@@ -1,0 +1,235 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <DAQlib.h>
+#include <Windows.h>
+#include <time.h>
+
+#define TRUE 1
+#define FALSE 0
+#define ON 1
+#define OFF 0
+#define LED_G 0
+#define LED_R 1
+#define LED_Y 2
+#define LED_B 3
+#define BUTTON_G 0
+#define BUTTON_R 1
+#define BUTTON_Y 2
+#define BUTTON_B 3
+#define ONE_SEC 1000
+#define SEQUENCE_LENGTH 5
+
+//a placeholder value
+#define NEITHER 2
+
+
+void runSimonGame(void);
+void generateSequence(int button_sequence[]);
+int randInt(void);
+int buttonPressed(int button_sequence[], int count);
+void winLoseFlash(int led);
+
+
+int main(void)
+{
+	int setupNum;
+	
+	//setting a seed for the random number generator
+	srand((unsigned)time(NULL));
+
+	printf("Please enter 6 to begin the Simon Game: ");
+	scanf("%d", &setupNum);
+
+	if (setupDAQ(setupNum) == TRUE)
+		runSimonGame();
+	else 
+		printf("\nError. Failed to initialize.");
+
+	printf("\n\n");
+	system("PAUSE");
+	return 0;
+}
+
+
+/* Purpose: A work function that will implement the Simon Game using the DAQ module. */
+void runSimonGame(void) {
+
+	int button_sequence[SEQUENCE_LENGTH];
+	int round = 1;
+	int count = 0;
+	int correct = NEITHER;
+	int play = TRUE;
+
+	printf("\n\nWatch the lights and try to recreate the pattern."); 
+	printf("\nPush the button number that corresponds to the light.");
+	printf("\nThe sequence will get longer each round. \nGood luck!");
+	printf("\n\nEnter 1 to begin: ");
+	scanf("%d", &play);
+
+	while (continueSuperLoop() == TRUE && play == TRUE) {
+
+		//generating the correct button sequence
+		generateSequence(button_sequence);
+		round = 1;
+
+		do {
+
+			//giving a few seconds for the user to prepare
+			Sleep(2 * ONE_SEC);
+
+			//flashing the correct light sequence
+			for (count = 0; count < round; count++) {
+				digitalWrite(button_sequence[count], ON);
+				Sleep(ONE_SEC);
+				digitalWrite(button_sequence[count], OFF);
+				Sleep(ONE_SEC);
+			}
+
+			//reading the user's input
+			for (count = 0; count < round; count++) {
+				correct = buttonPressed(button_sequence, count);
+				if (correct == NEITHER)
+					break;
+			}
+
+			//checking if the user has quit the game
+			if (correct == NEITHER)
+				break;
+
+			//the message for when the user has lost
+			if (correct == FALSE) {
+				Sleep(ONE_SEC);
+				winLoseFlash(BUTTON_R);
+				printf("\nYou lose!");
+				break;
+			}
+
+			round++;
+
+		} while (correct && round <= SEQUENCE_LENGTH);
+
+		//the message for when the user has won
+		if (correct == TRUE) {
+			Sleep(ONE_SEC);
+			winLoseFlash(BUTTON_G);
+			printf("\n\nCongratulations! You win!");
+		}
+
+		play = FALSE;
+	}
+
+	printf("\n\nThank you for playing!");
+}
+
+
+/* Purpose: Generates a random sequence of 5 numbers that give an order for the LED lights to flash.
+ * Parameters: int button_sequence[] - the array to store the sequence.
+*/
+void generateSequence(int button_sequence[]) {
+	
+	int index;
+
+	for (index = 0; index < SEQUENCE_LENGTH; index++) {
+		button_sequence[index] = randInt();
+	}
+}
+
+ 
+/* Purpose: Generates a randon integer number between 0-3 inclusive.
+ * Returns: A random integer.
+*/
+int randInt(void) {
+	
+	int randNum;
+
+	randNum = rand() % 4;
+
+	return randNum;
+}
+
+
+/* Purpose: To check whether each button pressed is correct in the game sequence.
+ * Parameters: int button_sequence[] - the array containing the correct sequence.
+ *			   int count - indicates the correct LED channel within the button_sequence array.
+ * Returns: Whether the button pressed was correct or incorrect.
+*/
+int buttonPressed(int button_sequence[], int count) {
+	
+	int buttonPressed = NEITHER;
+
+	while (buttonPressed == NEITHER && continueSuperLoop() == TRUE) {
+
+		if (digitalRead(BUTTON_G) == ON) {
+
+			//this loop will stop the program from proceeding until the button is released
+			while (digitalRead(BUTTON_G) == ON) {
+				digitalWrite(LED_G, ON);
+			}
+			digitalWrite(LED_G, OFF);
+
+			//checking whether the button pressed is correct in the sequence
+			if (button_sequence[count] == BUTTON_G)
+				return TRUE;
+			else
+				return FALSE;
+		}
+
+		if (digitalRead(BUTTON_R) == ON) {
+
+			while (digitalRead(BUTTON_R) == ON) {
+				digitalWrite(LED_R, ON);
+			}
+			digitalWrite(LED_R, OFF);
+			if (button_sequence[count] == BUTTON_R)
+				return TRUE;
+			else
+				return FALSE;
+		}
+
+		if (digitalRead(BUTTON_Y) == ON) {
+
+			while (digitalRead(BUTTON_Y) == ON) {
+				digitalWrite(LED_Y, ON);
+			}
+			digitalWrite(LED_Y, OFF);
+			if (button_sequence[count] == BUTTON_Y)
+				return TRUE;
+			else
+				return FALSE;
+		}
+
+		if (digitalRead(BUTTON_B) == ON) {
+
+			while (digitalRead(BUTTON_B) == ON) {
+				digitalWrite(LED_B, ON);
+			}
+			digitalWrite(LED_B, OFF);
+			if (button_sequence[count] == BUTTON_B)
+				return TRUE;
+			else
+				return FALSE;
+		}
+	}
+	
+	return buttonPressed;
+}
+
+/* Purpose: To flash an LED 3 times, either indicating a loss or win.
+ * Parameters: int led - the LED light to be flashed.
+*/
+void winLoseFlash(int led) {
+	
+	digitalWrite(led, ON);
+	Sleep(ONE_SEC/2);
+	digitalWrite(led, OFF);
+	Sleep(ONE_SEC/2);
+	digitalWrite(led, ON);
+	Sleep(ONE_SEC/2);
+	digitalWrite(led, OFF);
+	Sleep(ONE_SEC/2);
+	digitalWrite(led, ON);
+	Sleep(ONE_SEC/2);
+	digitalWrite(led, OFF);
+	Sleep(ONE_SEC/2);
+
+}
