@@ -1,2 +1,2 @@
 # basic-exercises
-i'm learning!!
+i'm learning!! these are my random exercises as i am learning to code
